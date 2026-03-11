@@ -288,7 +288,44 @@ const SHEET_ID = "1iLGJug5pltCIcP0YBdRX1VqxjuxvdJAu49bSwnnBN7k";
 const KABKOTA=["Pangkalpinang","Kab. Bangka","Kab. Bangka Barat","Kab. Bangka Tengah","Kab. Bangka Selatan","Kab. Belitung","Kab. Belitung Timur"];
 const SCFG={"Belum Mulai":{c:"#64748b",bg:"rgba(100,116,139,0.1)",d:"#94a3b8"},"Sedang Berjalan":{c:"#2060d0",bg:"rgba(32,96,208,0.1)",d:"#3b82f6"},"Review":{c:"#d97706",bg:"rgba(217,119,6,0.1)",d:"#f59e0b"},"Selesai":{c:"#16a34a",bg:"rgba(22,163,74,0.1)",d:"#22c55e"}};
 
-let surveiData=[],sampelData=[],flt="Semua",kpSurvei=null,kpKab=null,kpItems=[],sflt="Semua";
+let surveiData=[],sampelData=[],flt="Semua",kpSurvei=null,kpKab=null,kpItems=[],sflt="Semua",isDemoSampel=false;
+
+// ── DEMO DATA: dipakai saat sheet "Sampel" belum diisi atau gagal dimuat ──
+const NAMA_DEMO=["Ahmad Fauzi","Budi Santoso","Citra Dewi","Deni Kurniawan","Eka Putri","Fajar Rahman","Gita Lestari","Hendra Wijaya","Indah Sari","Joko Prabowo","Kartini Bahar","Lutfi Hakim","Maya Anggraini","Nurul Hidayat","Oky Setiawan","Putri Handayani","Rizky Maulana","Siti Rahayu","Teguh Santosa","Umar Bakri"];
+const ALAMAT_DEMO={
+  "Pangkalpinang":["Jl. Sudirman","Jl. Ahmad Yani","Jl. Soekarno Hatta","Jl. Depati Amir","Jl. Mentok"],
+  "Kab. Bangka":["Jl. Koba Raya","Jl. Sungailiat","Jl. Belinyu","Jl. Riau","Jl. Pasar Lama"],
+  "Kab. Bangka Barat":["Jl. Muntok Raya","Jl. Parit Tiga","Jl. Tempilang","Jl. Kelapa","Jl. Jebus"],
+  "Kab. Bangka Tengah":["Jl. Koba","Jl. Lubuk Besar","Jl. Pangkalan Baru","Jl. Simpang Katis","Jl. Merdeka"],
+  "Kab. Bangka Selatan":["Jl. Toboali","Jl. Air Gegas","Jl. Lepar","Jl. Simpang Rimba","Jl. Payung"],
+  "Kab. Belitung":["Jl. Tanjungpandan","Jl. Sijuk","Jl. Membalong","Jl. Badau","Jl. Selat Nasik"],
+  "Kab. Belitung Timur":["Jl. Manggar","Jl. Gantung","Jl. Damar","Jl. Simpang Pesak","Jl. Kelapa Kampit"],
+};
+
+function generateDemoSampel(surveiArr){
+  const TOTAL_PER_KAB=10;
+  const out=[];
+  surveiArr.forEach(survei=>{
+    KABKOTA.forEach(kab=>{
+      const pct=survei.kab[kab]??0;
+      const sudahCount=Math.round(TOTAL_PER_KAB*pct/100);
+      const alamatList=ALAMAT_DEMO[kab]||["Jl. Utama"];
+      for(let i=0;i<TOTAL_PER_KAB;i++){
+        out.push({
+          id:`demo_${survei.id}_${kab}_${i}`,
+          survei:survei.nama,
+          kab,
+          idSampel:`S${String(i+1).padStart(3,"0")}`,
+          nama:NAMA_DEMO[i%NAMA_DEMO.length],
+          alamat:`${alamatList[i%alamatList.length]} No.${i*3+1}, ${kab}`,
+          status:i<sudahCount?"Sudah":"Belum",
+          catatan:i<sudahCount&&i%3===0?"Sudah dikonfirmasi petugas":"",
+        });
+      }
+    });
+  });
+  return out;
+}
 
 // Cek apakah ID sudah diisi
 window.addEventListener("load",()=>{
@@ -313,7 +350,13 @@ async function gviz(sheetName){
   const r=await fetch(url);
   if(!r.ok)throw new Error("HTTP "+r.status);
   const txt=await r.text();
-  return JSON.parse(txt.replace(/^[^(]+\(/,"").replace(/\);?\s*$/,""));
+  const parsed=JSON.parse(txt.replace(/^[^(]+\(/,"").replace(/\);?\s*$/,""));
+  // Deteksi error dari Google API (sheet tidak ada / akses ditolak)
+  if(parsed.status==="error"||!parsed.table){
+    const msg=parsed.errors?.[0]?.detailed_message||parsed.errors?.[0]?.message||`Sheet "${sheetName}" tidak ditemukan atau tidak bisa diakses`;
+    throw new Error(msg);
+  }
+  return parsed;
 }
 
 function toRows(resp){
@@ -344,7 +387,7 @@ async function loadAll(){
     } else throw new Error("Gagal baca sheet 'Survei'. Pastikan nama sheet tepat dan sharing sudah diaktifkan.");
 
     if(spr.status==="fulfilled"){
-      sampelData=toRows(spr.value).map((r,i)=>({
+      const rows=toRows(spr.value).map((r,i)=>({
         id:String(i),
         survei:String(r["Nama Survei"]||"").trim(),
         kab:String(r["Kabupaten"]||"").trim(),
@@ -354,10 +397,24 @@ async function loadAll(){
         status:String(r["Status"]||"").trim()==="Sudah"?"Sudah":"Belum",
         catatan:String(r["Catatan"]||"").trim(),
       })).filter(d=>d.nama||d.idSampel);
+      if(rows.length>0){
+        sampelData=rows;
+        isDemoSampel=false;
+      } else {
+        // Sheet Sampel ada tapi masih kosong → pakai demo data
+        sampelData=generateDemoSampel(surveiData);
+        isDemoSampel=true;
+      }
+    } else {
+      // Sheet Sampel gagal dimuat → pakai demo data sebagai fallback
+      sampelData=generateDemoSampel(surveiData);
+      isDemoSampel=true;
+      console.warn("Sheet 'Sampel' gagal dimuat:",spr.reason?.message||spr.reason);
     }
 
     setDot("ok");
-    document.getElementById("upd").textContent=new Date().toLocaleTimeString("id-ID");
+    const timeStr=new Date().toLocaleTimeString("id-ID");
+    document.getElementById("upd").textContent=isDemoSampel?`${timeStr} · demo sampel`:timeStr;
     renderAll();
     if(kpSurvei&&kpKab)refreshKP();
   }catch(e){
@@ -473,7 +530,8 @@ function renderSampel(){
   const filtered=kpItems.filter(s=>(sflt==="Semua"||s.status===sflt)&&(s.nama+s.idSampel+s.alamat).toLowerCase().includes(q));
   const el=document.getElementById("kbody");
   if(!kpItems.length){
-    el.innerHTML=`<div class="kempty"><div class="ei">📋</div>Belum ada data sampel untuk wilayah ini.<br><small style="color:var(--light);margin-top:6px;display:block">Tambahkan di sheet "Sampel" di Google Sheets.</small></div>`;
+    const demoNote=isDemoSampel?`<small style="color:var(--light);margin-top:6px;display:block">⚠️ Mode demo — tambahkan data di sheet "Sampel" di Google Sheets.</small>`:`<small style="color:var(--light);margin-top:6px;display:block">Tambahkan di sheet "Sampel" di Google Sheets.</small>`;
+    el.innerHTML=`<div class="kempty"><div class="ei">📋</div>Belum ada data sampel untuk wilayah ini.${demoNote}</div>`;
     return;
   }
   if(!filtered.length){el.innerHTML='<div class="kempty"><div class="ei">🔍</div>Tidak ada yang cocok.</div>';return;}
