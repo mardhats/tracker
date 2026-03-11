@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="default">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Monitoring Survei — BPS Kep. Bangka Belitung</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────── */
+:root{
+  --bg:#eef2f7;--surface:#fff;--surface2:#f6f8fb;--surface3:#e8edf5;
+  --header:#1a3558;--header-text:#fff;--header-sub:#7eb3f5;
+  --accent:#2060d0;--accent-dark:#1a3558;--accent-soft:rgba(32,96,208,0.10);
+  --text:#0d1b2e;--muted:#4a6080;--light:#8fa4bf;
+  --border:#dde4ef;--border2:#c8d4e4;
+  --shadow:0 1px 4px rgba(0,0,0,0.07);--shadow-md:0 4px 18px rgba(0,0,0,0.11);--shadow-lg:0 16px 48px rgba(0,0,0,0.15);
+  --font:'DM Sans',system-ui,sans-serif;--fs:14px;--r:14px;
+  --g:#16a34a;--gbg:#dcfce7;--red:#dc2626;--rbg:#fee2e2;--amb:#d97706;--abbg:#fef3c7;
+  --tab-h:50px;
+}
+[data-theme="dark"]{--bg:#090e1a;--surface:#111827;--surface2:#161f30;--surface3:#1c2840;--header:#060c18;--header-sub:#5a9cf5;--text:#e8f0ff;--muted:#7a94b8;--light:#3a5070;--border:#1e2e45;--border2:#2a3f60;--accent-soft:rgba(32,96,208,0.18);}
+[data-theme="teal"]{--bg:#effaf8;--surface:#fff;--surface2:#effaf8;--surface3:#c8f0e8;--header:#0a4438;--header-sub:#5ee4c0;--accent:#0c8c6e;--accent-dark:#0a4438;--accent-soft:rgba(12,140,110,0.1);--text:#042e26;--muted:#0a5c48;--border:#a0e8d4;}
+[data-theme="slate"]{--bg:#f0f4f8;--surface:#fff;--surface2:#e8edf4;--surface3:#dde4ee;--header:#1c2637;--header-sub:#8fa8c8;--accent:#3a5a80;--accent-dark:#1c2637;--accent-soft:rgba(58,90,128,0.1);--text:#0a1628;--muted:#3a5070;--border:#c8d8e8;}
+[data-theme="warm"]{--bg:#fdf6ec;--surface:#fff;--surface2:#fdf6ec;--surface3:#fae8cc;--header:#6e2e04;--header-sub:#f5bb60;--accent:#c06010;--accent-dark:#6e2e04;--accent-soft:rgba(192,96,16,0.1);--text:#2e1200;--muted:#7a3e10;--border:#f0d0a0;}
+[data-theme="rose"]{--bg:#fff0f2;--surface:#fff;--surface2:#fff0f2;--surface3:#ffd8de;--header:#7a0e28;--header-sub:#f87090;--accent:#c01840;--accent-dark:#7a0e28;--accent-soft:rgba(192,24,64,0.1);--text:#280008;--muted:#800830;--border:#f0b0c0;}
+
+/* ── BASE ───────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);font-size:var(--fs);background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;}
+
+/* ── HEADER ─────────────────────────────────────── */
+header{background:var(--header);padding:14px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(255,255,255,0.06);}
+.hbrand{display:flex;align-items:center;gap:12px;}
+.hicon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#1848b8);border-radius:10px;display:grid;place-items:center;font-size:19px;flex-shrink:0;}
+.hsub{color:var(--header-sub);font-size:10px;letter-spacing:2px;text-transform:uppercase;font-family:monospace;}
+.htitle{color:var(--header-text);font-size:17px;font-weight:700;font-family:'DM Serif Display',serif;}
+.hright{display:flex;align-items:center;gap:8px;}
+#dot{width:8px;height:8px;border-radius:50%;background:#3a5070;transition:background .3s;flex-shrink:0;}
+#dot.ok{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.25);}
+#dot.loading{background:#f59e0b;animation:blink 1s infinite;}
+#dot.err{background:#ef4444;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#upd{color:rgba(255,255,255,0.3);font-size:11px;font-family:monospace;}
+.hbtn{background:rgba(255,255,255,0.1);color:var(--header-text);border:none;border-radius:8px;padding:7px 11px;cursor:pointer;font-size:15px;transition:background .2s;}
+.hbtn:hover{background:rgba(255,255,255,0.2);}
+
+/* ── TAB NAV ────────────────────────────────────── */
+.tabnav{background:var(--header);border-bottom:1px solid rgba(255,255,255,0.1);padding:0 20px;position:sticky;top:64px;z-index:49;display:flex;gap:0;}
+.tabnav-inner{max-width:1040px;margin:0 auto;width:100%;display:flex;gap:0;}
+.tab{padding:0 20px;height:var(--tab-h);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.45);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none;font-family:var(--font);}
+.tab:hover{color:rgba(255,255,255,0.8);}
+.tab.on{color:#fff;border-bottom-color:var(--header-sub);}
+.tab .ti{font-size:16px;}
+
+/* ── WRAP ───────────────────────────────────────── */
+.wrap{max-width:1040px;margin:0 auto;padding:24px 20px;}
+
+/* ── PANELS ─────────────────────────────────────── */
+.panel{display:none;animation:fadeUp .25s ease;}
+.panel.on{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── ALERT BANNER ───────────────────────────────── */
+.alertbar{background:linear-gradient(90deg,#7c1d1d,#991b1b);border-radius:var(--r);padding:12px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--shadow);}
+.alertbar.warn{background:linear-gradient(90deg,#78350f,#92400e);}
+.alertbar-ico{font-size:18px;flex-shrink:0;margin-top:1px;}
+.alertbar-body{flex:1;}
+.alertbar-title{color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.alertbar-items{display:flex;gap:8px;flex-wrap:wrap;}
+.alertbar-tag{background:rgba(255,255,255,0.15);color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:background .2s;}
+.alertbar-tag:hover{background:rgba(255,255,255,0.28);}
+
+/* ── STAT CARDS ─────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.stat{background:var(--surface);border-radius:var(--r);padding:18px 20px;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.stat::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--sc,var(--accent));}
+.sv{font-size:30px;font-weight:700;font-family:'DM Serif Display',serif;line-height:1.1;margin-bottom:4px;}
+.sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:600;}
+
+/* ── TOOLBAR ────────────────────────────────────── */
+.tb{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.srch{flex:1;min-width:190px;position:relative;}
+.srch input{width:100%;padding:9px 14px 9px 34px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:all .2s;}
+.srch input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.srch-ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--light);pointer-events:none;}
+.ftrs{display:flex;gap:6px;flex-wrap:wrap;}
+.fb{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;cursor:pointer;background:var(--surface);color:var(--muted);font-family:var(--font);font-weight:500;transition:all .2s;}
+.fb.on{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark);font-weight:700;}
+.rfbtn{padding:8px 13px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font);font-weight:600;transition:all .2s;}
+.rfbtn:hover{border-color:var(--accent);color:var(--accent);}
+.expbtn{padding:8px 13px;border-radius:10px;border:1.5px solid var(--g);background:var(--gbg);color:var(--g);font-size:12px;cursor:pointer;font-family:var(--font);font-weight:700;transition:all .2s;}
+.expbtn:hover{background:var(--g);color:#fff;}
+
+/* ── OVERVIEW CARDS ─────────────────────────────── */
+.cards{display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border);border-left:4px solid #ccc;overflow:hidden;transition:box-shadow .2s,transform .2s;}
+.card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.cmain{padding:20px 22px;}
+.ctop{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
+.cinfo{flex:1;}
+.cname{font-size:16px;font-weight:700;font-family:'DM Serif Display',serif;color:var(--text);margin-bottom:7px;}
+.cmeta{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.badge{border-radius:20px;padding:3px 11px;font-size:11px;font-weight:700;}
+.dl{font-size:11px;color:var(--muted);}
+.dl.red{color:var(--red);font-weight:700;}
+.cpct{font-size:30px;font-weight:700;font-family:'DM Serif Display',serif;line-height:1;text-align:right;min-width:60px;}
+.pb{background:var(--surface3);border-radius:99px;height:8px;overflow:hidden;}
+.pf{height:100%;border-radius:99px;transition:width .6s ease;}
+.team{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+.tlbl{font-size:10px;color:var(--light);text-transform:uppercase;letter-spacing:.5px;}
+.tbdg{background:var(--surface2);color:var(--accent-dark);border:1px solid var(--border);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;}
+.cactions{display:flex;gap:8px;margin-top:10px;}
+.cact{padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s;}
+.cact:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── KAB ACCORDION (Overview) ───────────────────── */
+.kabacc{border-top:1px solid var(--border);background:var(--surface2);}
+.kabtog{width:100%;padding:10px 22px;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:7px;transition:background .2s;}
+.kabtog:hover{background:var(--surface3);}
+.kabwrap{display:none;padding:0 22px 20px;}
+.kabwrap.open{display:block;}
+.kabgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;}
+.kabitem{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;cursor:pointer;transition:all .2s;}
+.kabitem:hover{border-color:var(--accent);box-shadow:0 3px 12px var(--accent-soft);transform:translateY(-1px);}
+.kihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.kiname{font-size:12px;font-weight:700;}
+.kipct{font-size:15px;font-weight:700;font-family:'DM Serif Display',serif;}
+.kibar{background:var(--surface3);border-radius:99px;height:5px;overflow:hidden;margin-bottom:5px;}
+.kifill{height:100%;border-radius:99px;}
+.kihint{font-size:10px;color:var(--light);}
+
+/* ── PANEL 2: PER WILAYAH ───────────────────────── */
+.kab-selector{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;}
+.kab-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--r);padding:14px 12px;cursor:pointer;text-align:center;transition:all .22s;font-family:var(--font);}
+.kab-btn:hover{border-color:var(--accent);box-shadow:0 3px 14px var(--accent-soft);}
+.kab-btn.on{border-color:var(--accent);background:var(--accent-soft);}
+.kab-btn .kb-ico{font-size:22px;margin-bottom:6px;}
+.kab-btn .kb-name{font-size:11px;font-weight:700;color:var(--text);}
+.kab-btn .kb-pct{font-size:18px;font-weight:700;font-family:'DM Serif Display',serif;margin-top:4px;}
+
+.wil-header{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:22px 24px;margin-bottom:20px;box-shadow:var(--shadow);}
+.wil-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.wil-title{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;}
+.wil-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.wil-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:0;}
+.wstat{background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border);text-align:center;}
+.wsv{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;}
+.wsl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+.wil-survei-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+.wil-survei-card{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:16px 18px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;}
+.wil-survei-card:hover{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.wsc-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.wsc-name{flex:1;font-size:14px;font-weight:700;font-family:'DM Serif Display',serif;}
+.wsc-pct{font-size:20px;font-weight:700;font-family:'DM Serif Display',serif;min-width:52px;text-align:right;}
+.wsc-meta{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.wsc-bar{background:var(--surface3);border-radius:99px;height:7px;overflow:hidden;}
+.wsc-fill{height:100%;border-radius:99px;transition:width .6s;}
+.wsc-sampel{font-size:11px;color:var(--muted);margin-top:6px;}
+
+/* ── SAMPEL TABLE ───────────────────────────────── */
+.sampel-section{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);}
+.sampel-head{padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.sampel-head-title{font-size:14px;font-weight:700;}
+.sampel-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.smp-srch{padding:7px 11px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);outline:none;width:180px;}
+.smp-srch:focus{border-color:var(--accent);}
+.sfb{padding:5px 12px;border-radius:16px;border:1.5px solid var(--border);font-size:11px;font-weight:600;cursor:pointer;background:var(--surface);color:var(--muted);font-family:var(--font);transition:all .2s;}
+.sfb.on{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark);}
+
+/* survei filter chips */
+.survei-chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);}
+.survei-chip{padding:4px 12px;border-radius:16px;border:1.5px solid var(--border);font-size:11px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--muted);font-family:var(--font);transition:all .2s;white-space:nowrap;}
+.survei-chip.on{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark);}
+.survei-chip-wrap{font-size:10px;color:var(--light);align-self:center;flex-shrink:0;}
+
+.sampel-body{max-height:480px;overflow-y:auto;}
+.sitem{display:flex;align-items:flex-start;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border);transition:background .15s;}
+.sitem:hover{background:var(--surface2);}
+.sitem:last-child{border-bottom:none;}
+.sitem.sudah{border-left:3px solid var(--g);}
+.sitem.belum{border-left:3px solid var(--border2);}
+.sdot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px;}
+.sdot.sudah{background:var(--gbg);color:var(--g);}
+.sdot.belum{background:var(--surface3);color:var(--light);}
+.sbody{flex:1;min-width:0;}
+.srow{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:2px;}
+.sname{font-size:13px;font-weight:700;}
+.sid{font-size:10px;color:var(--light);font-family:monospace;background:var(--surface2);padding:1px 6px;border-radius:4px;margin-left:5px;}
+.sbdg{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;flex-shrink:0;}
+.sbdg.sudah{background:var(--gbg);color:var(--g);}
+.sbdg.belum{background:var(--surface3);color:var(--muted);}
+.smeta{font-size:11px;color:var(--muted);}
+.snote{font-size:11px;color:var(--light);font-style:italic;margin-top:2px;}
+.s-survei-tag{font-size:10px;color:var(--accent);font-weight:600;background:var(--accent-soft);border-radius:8px;padding:1px 7px;margin-top:3px;display:inline-block;}
+.kempty{text-align:center;padding:40px 20px;color:var(--light);}
+.kempty .ei{font-size:32px;margin-bottom:10px;}
+
+/* ── PANEL 3: PER KEGIATAN ──────────────────────── */
+.survei-selector{margin-bottom:24px;}
+.sel-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;}
+.sel-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.sel-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:flex-start;gap:12px;}
+.sel-card:hover{border-color:var(--accent);box-shadow:0 3px 14px var(--accent-soft);}
+.sel-card.on{border-color:var(--accent);background:var(--accent-soft);}
+.sel-card-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.sel-card-body{flex:1;min-width:0;}
+.sel-card-name{font-size:13px;font-weight:700;margin-bottom:4px;}
+.sel-card-meta{font-size:11px;color:var(--muted);}
+
+.kg-header{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:22px 24px;margin-bottom:20px;box-shadow:var(--shadow);}
+.kg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.kg-title-area{flex:1;}
+.kg-title{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;margin-bottom:6px;}
+.kg-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.kg-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.kg-pct-big{font-size:40px;font-weight:700;font-family:'DM Serif Display',serif;line-height:1;}
+.kg-pct-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;text-align:right;}
+.kg-pbar{background:var(--surface3);border-radius:99px;height:10px;overflow:hidden;margin-bottom:16px;}
+.kg-pfill{height:100%;border-radius:99px;transition:width .7s ease;}
+.kg-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kgst{background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border);text-align:center;}
+.kgstv{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;}
+.kgstl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.kg-info-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.kg-info-chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--muted);}
+.kg-info-chip strong{color:var(--text);}
+
+/* ── KAB BREAKDOWN CHART ────────────────────────── */
+.kab-chart{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow);}
+.chart-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:16px;}
+.chart-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;cursor:pointer;border-radius:8px;padding:6px 8px;transition:background .15s;}
+.chart-row:hover{background:var(--surface2);}
+.chart-row:last-child{margin-bottom:0;}
+.chart-name{width:160px;font-size:12px;font-weight:600;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chart-bar-wrap{flex:1;background:var(--surface3);border-radius:99px;height:14px;overflow:hidden;}
+.chart-bar-fill{height:100%;border-radius:99px;transition:width .7s ease;}
+.chart-pct{width:44px;text-align:right;font-size:13px;font-weight:700;font-family:'DM Serif Display',serif;flex-shrink:0;}
+.chart-count{width:68px;text-align:right;font-size:10px;color:var(--light);flex-shrink:0;}
+
+/* ── SIDE PANEL (sampel drawer) ─────────────────── */
+#kOv{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;display:none;backdrop-filter:blur(4px);}
+#kOv.on{display:block;}
+#kPan{position:fixed;right:0;top:0;bottom:0;width:500px;background:var(--surface);box-shadow:var(--shadow-lg);z-index:301;transform:translateX(110%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;border-left:1px solid var(--border);}
+#kPan.on{transform:translateX(0);}
+.kph{padding:20px 22px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface2);}
+.kptop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.kpsurvei{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+.kpkab{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;color:var(--text);}
+.kxbtn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13px;color:var(--muted);}
+.kpprog{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.kpbar{flex:1;background:var(--surface3);border-radius:99px;height:9px;overflow:hidden;}
+.kpfill{height:100%;border-radius:99px;transition:width .5s;}
+.kppct{font-size:16px;font-weight:700;font-family:'DM Serif Display',serif;min-width:44px;text-align:right;}
+.kstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 22px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.kstat{background:var(--surface2);border-radius:9px;padding:10px;text-align:center;border:1px solid var(--border);}
+.ksv{font-size:22px;font-weight:700;font-family:'DM Serif Display',serif;}
+.ksl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.ksbar{padding:12px 22px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.ksrch{flex:1;min-width:120px;padding:8px 11px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:var(--font);outline:none;}
+.ksrch:focus{border-color:var(--accent);}
+.kfbtns{display:flex;gap:5px;}
+.kfb{padding:7px 11px;border-radius:18px;border:1.5px solid var(--border);font-size:11px;cursor:pointer;background:var(--surface);color:var(--muted);font-family:var(--font);font-weight:600;}
+.kfb.on{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark);}
+.kbody{flex:1;overflow-y:auto;padding:4px 0;}
+.kbody .sitem{padding:11px 22px;}
+
+/* ── SETTINGS ───────────────────────────────────── */
+.sov{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:none;}
+.sov.on{display:block;}
+.span{position:fixed;right:0;top:0;bottom:0;width:320px;background:var(--surface);z-index:201;transform:translateX(100%);transition:transform .3s;overflow-y:auto;border-left:1px solid var(--border);box-shadow:var(--shadow-lg);}
+.span.on{transform:translateX(0);}
+.sph{padding:18px 20px;background:var(--accent-dark);color:#fff;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;}
+.sph h2{font-size:15px;font-weight:700;}
+.bx{background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;}
+.spb{padding:18px 20px;}
+.ss{margin-bottom:22px;}
+.ss h3{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:5px;}
+.tgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
+.tbtn{padding:10px 6px;border-radius:9px;border:2px solid var(--border);cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font);text-align:center;transition:all .2s;}
+.tbtn.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+.fzrow{display:flex;align-items:center;gap:9px;}
+.fzrow input[type=range]{flex:1;accent-color:var(--accent);}
+.fzv{font-size:12px;font-weight:700;min-width:32px;color:var(--muted);text-align:right;}
+
+/* ── MISC ───────────────────────────────────────── */
+.nodata{text-align:center;padding:60px 20px;color:var(--light);background:var(--surface);border-radius:var(--r);border:1px solid var(--border);}
+.nodata .ico{font-size:36px;margin-bottom:12px;}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.demo-badge{background:var(--abbg);color:var(--amb);border:1px solid var(--amb);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
+
+@media(max-width:640px){
+  .stats,.kab-selector,.sel-grid,.kg-stats,.wil-stats{grid-template-columns:repeat(2,1fr);}
+  .kabgrid{grid-template-columns:1fr;}
+  header{padding:12px 16px;flex-wrap:wrap;gap:8px;}
+  #kPan{width:100%;}
+  .span{width:100%;}
+  .wrap{padding:16px 14px;}
+  .tab{padding:0 12px;font-size:12px;}
+  .chart-name{width:100px;}
+  .kab-selector{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbrand">
+    <div class="hicon">📊</div>
+    <div>
+      <div class="hsub">Badan Pusat Statistik — Kep. Bangka Belitung</div>
+      <div class="htitle">Dashboard Monitoring Survei</div>
+    </div>
+  </div>
+  <div class="hright">
+    <div id="dot" class="loading"></div>
+    <span id="upd">Memuat...</span>
+    <button class="hbtn" onclick="loadAll()" title="Refresh">🔄</button>
+    <button class="hbtn" onclick="openSP()">⚙️</button>
+  </div>
+</header>
+
+<!-- TAB NAVIGATION -->
+<div class="tabnav">
+  <div class="tabnav-inner">
+    <button class="tab on" id="tab-overview" onclick="switchTab('overview')"><span class="ti">🗂</span> Overview</button>
+    <button class="tab" id="tab-wilayah" onclick="switchTab('wilayah')"><span class="ti">📍</span> Per Wilayah</button>
+    <button class="tab" id="tab-kegiatan" onclick="switchTab('kegiatan')"><span class="ti">📋</span> Per Kegiatan</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 1 — OVERVIEW
+  ══════════════════════════════════════════════════ -->
+  <div class="panel on" id="panel-overview">
+    <div id="alert-zone"></div>
+    <div class="stats">
+      <div class="stat" style="--sc:var(--accent)"><div class="sv" id="stT">—</div><div class="sl">Total Survei</div></div>
+      <div class="stat" style="--sc:#3b82f6"><div class="sv" id="stB">—</div><div class="sl">Sedang Berjalan</div></div>
+      <div class="stat" style="--sc:var(--g)"><div class="sv" id="stS">—</div><div class="sl">Selesai</div></div>
+      <div class="stat" style="--sc:var(--amb)"><div class="sv" id="stP">—</div><div class="sl">Rata-rata Progress</div></div>
+    </div>
+    <div class="tb">
+      <div class="srch">
+        <span class="srch-ic">🔍</span>
+        <input type="text" id="srch" placeholder="Cari nama survei..." oninput="renderCards()">
+      </div>
+      <div class="ftrs" id="ftrs">
+        <button class="fb on" data-f="Semua">Semua</button>
+        <button class="fb" data-f="Belum Mulai">Belum Mulai</button>
+        <button class="fb" data-f="Sedang Berjalan">Berjalan</button>
+        <button class="fb" data-f="Review">Review</button>
+        <button class="fb" data-f="Selesai">Selesai</button>
+      </div>
+      <button class="rfbtn" onclick="loadAll()">🔄 Refresh</button>
+    </div>
+    <div class="cards" id="cards">
+      <div class="nodata"><div class="ico">⏳</div><div>Memuat data...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 2 — PER WILAYAH
+  ══════════════════════════════════════════════════ -->
+  <div class="panel" id="panel-wilayah">
+    <div class="section-title">📍 Pilih Kabupaten / Kota</div>
+    <div class="kab-selector" id="kab-selector"></div>
+    <div id="wil-content">
+      <div class="nodata"><div class="ico">👆</div><div>Pilih kabupaten/kota di atas untuk melihat data.</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 3 — PER KEGIATAN
+  ══════════════════════════════════════════════════ -->
+  <div class="panel" id="panel-kegiatan">
+    <div class="section-title">📋 Pilih Kegiatan Survei / Sensus</div>
+    <div class="sel-grid" id="sel-grid"></div>
+    <div style="margin-top:20px;" id="kg-content">
+      <div class="nodata"><div class="ico">👆</div><div>Pilih kegiatan di atas untuk melihat detail.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SAMPEL SIDE PANEL -->
+<div id="kOv" onclick="closeKP()"></div>
+<div id="kPan">
+  <div class="kph">
+    <div class="kptop">
+      <div>
+        <div class="kpsurvei" id="kpS">—</div>
+        <div class="kpkab" id="kpK">—</div>
+      </div>
+      <button class="kxbtn" onclick="closeKP()">✕</button>
+    </div>
+    <div class="kpprog">
+      <div class="kpbar"><div class="kpfill" id="kpF" style="width:0%"></div></div>
+      <div class="kppct" id="kpP">0%</div>
+    </div>
+  </div>
+  <div class="kstats">
+    <div class="kstat"><div class="ksv" id="kpTot" style="color:var(--accent-dark)">0</div><div class="ksl">Total</div></div>
+    <div class="kstat"><div class="ksv" id="kpSdh" style="color:var(--g)">0</div><div class="ksl">Sudah</div></div>
+    <div class="kstat"><div class="ksv" id="kpBlm" style="color:var(--red)">0</div><div class="ksl">Belum</div></div>
+  </div>
+  <div class="ksbar">
+    <input class="ksrch" id="ksrch" placeholder="🔍 Cari sampel..." oninput="renderSampelPanel()">
+    <div class="kfbtns">
+      <button class="kfb on" data-sf="Semua" onclick="setSF('Semua',this)">Semua</button>
+      <button class="kfb" data-sf="Sudah" onclick="setSF('Sudah',this)">✅ Sudah</button>
+      <button class="kfb" data-sf="Belum" onclick="setSF('Belum',this)">⏳ Belum</button>
+    </div>
+  </div>
+  <div class="kbody" id="kbody"></div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="sov" id="sov" onclick="closeSP()"></div>
+<div class="span" id="span">
+  <div class="sph"><h2>⚙️ Tampilan</h2><button class="bx" onclick="closeSP()">✕</button></div>
+  <div class="spb">
+    <div class="ss">
+      <h3>🎨 Tema</h3>
+      <div class="tgrid">
+        <button class="tbtn on" style="background:#1a3558;color:#fff" onclick="setTheme('default',this)">🔵 BPS Biru</button>
+        <button class="tbtn" style="background:#090e1a;color:#e8f0ff" onclick="setTheme('dark',this)">🌙 Gelap</button>
+        <button class="tbtn" style="background:#0a4438;color:#fff" onclick="setTheme('teal',this)">🌿 Teal</button>
+        <button class="tbtn" style="background:#1c2637;color:#8fa8c8" onclick="setTheme('slate',this)">🩶 Slate</button>
+        <button class="tbtn" style="background:#6e2e04;color:#f5bb60" onclick="setTheme('warm',this)">🍂 Warm</button>
+        <button class="tbtn" style="background:#7a0e28;color:#f87090" onclick="setTheme('rose',this)">🌹 Rose</button>
+      </div>
+    </div>
+    <div class="ss">
+      <h3>📏 Ukuran Teks</h3>
+      <div class="fzrow">
+        <span style="font-size:11px">A</span>
+        <input type="range" min="12" max="18" value="14" oninput="setFZ(this.value)">
+        <span style="font-size:16px">A</span>
+        <span class="fzv" id="fzv">14px</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   KONFIGURASI
+══════════════════════════════════════════════════ */
+const SHEET_ID = "1iLGJug5pltCIcP0YBdRX1VqxjuxvdJAu49bSwnnBN7k";
+
+const KABKOTA=["Pangkalpinang","Kab. Bangka","Kab. Bangka Barat","Kab. Bangka Tengah","Kab. Bangka Selatan","Kab. Belitung","Kab. Belitung Timur"];
+const KAB_ICO={"Pangkalpinang":"🏙️","Kab. Bangka":"🌴","Kab. Bangka Barat":"⛏️","Kab. Bangka Tengah":"🌾","Kab. Bangka Selatan":"🐚","Kab. Belitung":"💎","Kab. Belitung Timur":"🌅"};
+const SCFG={"Belum Mulai":{c:"#64748b",bg:"rgba(100,116,139,0.1)",d:"#94a3b8"},"Sedang Berjalan":{c:"#2060d0",bg:"rgba(32,96,208,0.1)",d:"#3b82f6"},"Review":{c:"#d97706",bg:"rgba(217,119,6,0.1)",d:"#f59e0b"},"Selesai":{c:"#16a34a",bg:"rgba(22,163,74,0.1)",d:"#22c55e"}};
+
+/* ── STATE ──────────────────────────────────────── */
+let surveiData=[],sampelData=[],isDemoSampel=false;
+let flt="Semua";
+let kpSurvei=null,kpKab=null,kpItems=[],sflt="Semua";
+let selKab=null,wilSurveiFilter="Semua",wilStatusFilter="Semua";
+let selSurveiId=null,kgKabFilter="Semua",kgStatusFilter="Semua",kgSrch="";
+
+/* ── DEMO DATA ──────────────────────────────────── */
+const NAMA_DEMO=["Ahmad Fauzi","Budi Santoso","Citra Dewi","Deni Kurniawan","Eka Putri","Fajar Rahman","Gita Lestari","Hendra Wijaya","Indah Sari","Joko Prabowo","Kartini Bahar","Lutfi Hakim","Maya Anggraini","Nurul Hidayat","Oky Setiawan","Putri Handayani","Rizky Maulana","Siti Rahayu","Teguh Santosa","Umar Bakri"];
+const ALAMAT_DEMO={"Pangkalpinang":["Jl. Sudirman","Jl. Ahmad Yani","Jl. Soekarno Hatta","Jl. Depati Amir","Jl. Mentok"],"Kab. Bangka":["Jl. Koba Raya","Jl. Sungailiat","Jl. Belinyu","Jl. Riau","Jl. Pasar Lama"],"Kab. Bangka Barat":["Jl. Muntok Raya","Jl. Parit Tiga","Jl. Tempilang","Jl. Kelapa","Jl. Jebus"],"Kab. Bangka Tengah":["Jl. Koba","Jl. Lubuk Besar","Jl. Pangkalan Baru","Jl. Simpang Katis","Jl. Merdeka"],"Kab. Bangka Selatan":["Jl. Toboali","Jl. Air Gegas","Jl. Lepar","Jl. Simpang Rimba","Jl. Payung"],"Kab. Belitung":["Jl. Tanjungpandan","Jl. Sijuk","Jl. Membalong","Jl. Badau","Jl. Selat Nasik"],"Kab. Belitung Timur":["Jl. Manggar","Jl. Gantung","Jl. Damar","Jl. Simpang Pesak","Jl. Kelapa Kampit"]};
+function generateDemoSampel(surveiArr){
+  const out=[];
+  surveiArr.forEach(survei=>{
+    KABKOTA.forEach(kab=>{
+      const pct=survei.kab[kab]??0;const sdh=Math.round(10*pct/100);const al=ALAMAT_DEMO[kab]||["Jl. Utama"];
+      for(let i=0;i<10;i++)out.push({id:`demo_${survei.id}_${kab}_${i}`,survei:survei.nama,kab,idSampel:`S${String(i+1).padStart(3,"0")}`,nama:NAMA_DEMO[i%20],alamat:`${al[i%al.length]} No.${i*3+1}`,status:i<sdh?"Sudah":"Belum",catatan:i<sdh&&i%3===0?"Sudah dikonfirmasi":""});
+    });
+  });
+  return out;
+}
+
+/* ── GOOGLE SHEETS FETCH ────────────────────────── */
+async function gviz(sheetName){
+  const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const txt=await r.text();
+  const parsed=JSON.parse(txt.replace(/^[^(]+\(/,"").replace(/\);?\s*$/,""));
+  if(parsed.status==="error"||!parsed.table){const msg=parsed.errors?.[0]?.detailed_message||`Sheet "${sheetName}" tidak ditemukan`;throw new Error(msg);}
+  return parsed;
+}
+function toRows(resp){
+  if(!resp.table?.cols)return[];
+  const cols=resp.table.cols.map(c=>c.label||c.id);
+  return(resp.table.rows||[]).map(row=>{const o={};cols.forEach((c,i)=>{const cell=row.c?.[i];o[c]=cell?(cell.v!=null?cell.v:""):"";});return o;});
+}
+
+/* ── LOAD DATA ──────────────────────────────────── */
+window.addEventListener("load",()=>{
+  if(SHEET_ID==="GANTI_DENGAN_SPREADSHEET_ID_KAMU"){
+    document.getElementById("cards").innerHTML=`<div class="nodata"><div class="ico">✏️</div><div><strong>Konfigurasi diperlukan</strong><br><br>Ganti SHEET_ID di dalam kode.</div></div>`;
+    setDot("err");document.getElementById("upd").textContent="Belum dikonfigurasi";return;
+  }
+  loadAll();setInterval(loadAll,60000);
+});
+
+async function loadAll(){
+  if(SHEET_ID==="GANTI_DENGAN_SPREADSHEET_ID_KAMU")return;
+  setDot("loading");
+  try{
+    const [sr,spr]=await Promise.allSettled([gviz("Survei"),gviz("Sampel")]);
+    if(sr.status==="fulfilled"){
+      surveiData=toRows(sr.value).map((r,i)=>({
+        id:String(i),
+        nama:String(r["Nama Survei"]||"").trim(),
+        deadline:String(r["Deadline"]||""),
+        status:(s=>["Belum Mulai","Sedang Berjalan","Review","Selesai"].includes(s)?s:"Belum Mulai")(String(r["Status"]||"").trim()),
+        progress:Math.min(100,Math.max(0,parseInt(r["Progress (%)"])||0)),
+        penanggung:String(r["Penanggung Jawab"]||"").split(",").map(s=>s.trim()).filter(Boolean),
+        kab:Object.fromEntries(KABKOTA.map(k=>[k,Math.min(100,Math.max(0,parseInt(r[k])||0))])),
+      })).filter(d=>d.nama);
+    } else throw new Error("Gagal baca sheet 'Survei'.");
+
+    if(spr.status==="fulfilled"){
+      const rows=toRows(spr.value).map((r,i)=>({id:String(i),survei:String(r["Nama Survei"]||"").trim(),kab:String(r["Kabupaten"]||"").trim(),idSampel:String(r["ID Sampel"]||"").trim(),nama:String(r["Nama Sampel"]||"").trim(),alamat:String(r["Alamat"]||"").trim(),status:String(r["Status"]||"").trim()==="Sudah"?"Sudah":"Belum",catatan:String(r["Catatan"]||"").trim()})).filter(d=>d.nama||d.idSampel);
+      if(rows.length>0){sampelData=rows;isDemoSampel=false;}
+      else{sampelData=generateDemoSampel(surveiData);isDemoSampel=true;}
+    } else{sampelData=generateDemoSampel(surveiData);isDemoSampel=true;}
+
+    setDot("ok");
+    const t=new Date().toLocaleTimeString("id-ID");
+    document.getElementById("upd").textContent=isDemoSampel?`${t} · demo`:t;
+    renderAll();
+    if(kpSurvei&&kpKab)refreshKP();
+  }catch(e){
+    setDot("err");document.getElementById("upd").textContent="Gagal memuat";
+    if(!surveiData.length)document.getElementById("cards").innerHTML=`<div class="nodata"><div class="ico">⚠️</div><div><strong>Gagal memuat data</strong><br><small>${e.message}</small><br><br><small>Cek sharing: <strong>Anyone with the link → Viewer</strong></small></div></div>`;
+  }
+}
+
+function setDot(s){document.getElementById("dot").className=s;}
+function pc(p){return p>=80?"#22c55e":p>=50?"#3b82f6":p>=20?"#f59e0b":"#ef4444";}
+function esc(s){return s.replace(/'/g,"\\'");}
+function daysUntil(dl){return Math.ceil((new Date(dl)-new Date())/86400000);}
+
+/* ══════════════════════════════════════════════════
+   TAB NAVIGATION
+══════════════════════════════════════════════════ */
+function switchTab(name){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));
+  document.getElementById("panel-"+name).classList.add("on");
+  document.getElementById("tab-"+name).classList.add("on");
+  if(name==="wilayah")renderWilayah();
+  if(name==="kegiatan")renderKegiatanSelector();
+}
+
+/* ══════════════════════════════════════════════════
+   PANEL 1 — OVERVIEW
+══════════════════════════════════════════════════ */
+function renderAll(){
+  document.getElementById("stT").textContent=surveiData.length;
+  document.getElementById("stB").textContent=surveiData.filter(d=>d.status==="Sedang Berjalan").length;
+  document.getElementById("stS").textContent=surveiData.filter(d=>d.status==="Selesai").length;
+  const avg=surveiData.length?Math.round(surveiData.reduce((a,b)=>a+b.progress,0)/surveiData.length):0;
+  document.getElementById("stP").textContent=avg+"%";
+  renderAlerts();
+  renderCards();
+}
+
+function renderAlerts(){
+  const overdue=surveiData.filter(d=>d.status!=="Selesai"&&daysUntil(d.deadline)<0);
+  const urgent=surveiData.filter(d=>d.status!=="Selesai"&&daysUntil(d.deadline)>=0&&daysUntil(d.deadline)<7);
+  const zone=document.getElementById("alert-zone");
+  let html="";
+  if(overdue.length)html+=`<div class="alertbar"><div class="alertbar-ico">🚨</div><div class="alertbar-body"><div class="alertbar-title">Terlambat (${overdue.length} survei)</div><div class="alertbar-items">${overdue.map(d=>`<span class="alertbar-tag" onclick="goToSurvei('${d.id}')">${d.nama}</span>`).join("")}</div></div></div>`;
+  if(urgent.length)html+=`<div class="alertbar warn"><div class="alertbar-ico">⚠️</div><div class="alertbar-body"><div class="alertbar-title">Deadline ≤ 7 hari (${urgent.length} survei)</div><div class="alertbar-items">${urgent.map(d=>`<span class="alertbar-tag" onclick="goToSurvei('${d.id}')">${d.nama} · ${daysUntil(d.deadline)}h</span>`).join("")}</div></div></div>`;
+  zone.innerHTML=html;
+}
+
+function goToSurvei(id){switchTab("kegiatan");setTimeout(()=>selectSurvei(id),50);}
+
+function renderCards(){
+  const q=document.getElementById("srch").value.toLowerCase();
+  const list=surveiData.filter(d=>(flt==="Semua"||d.status===flt)&&d.nama.toLowerCase().includes(q));
+  const el=document.getElementById("cards");
+  if(!list.length){el.innerHTML='<div class="nodata"><div class="ico">🔍</div><div>Tidak ada survei ditemukan.</div></div>';return;}
+  el.innerHTML=list.map(item=>{
+    const cfg=SCFG[item.status]||SCFG["Belum Mulai"];
+    const days=daysUntil(item.deadline);
+    const urg=days<7&&item.status!=="Selesai";
+    const dlStr=item.status==="Selesai"?"✅ Selesai":days>=0?`${days} hari lagi`:"⚠️ Terlambat";
+    const teams=item.penanggung.length?item.penanggung.map(p=>`<span class="tbdg">${p}</span>`).join(""):'<span style="font-size:11px;color:var(--light)">—</span>';
+    const kabItems=KABKOTA.map(k=>{
+      const pct=item.kab[k]??0;
+      const hasSampel=sampelData.some(s=>s.survei===item.nama&&s.kab===k);
+      return `<div class="kabitem" onclick="openKP('${item.id}','${esc(item.nama)}','${k}')">
+        <div class="kihead"><span class="kiname">${k}</span><span class="kipct" style="color:${pc(pct)}">${pct}%</span></div>
+        <div class="kibar"><div class="kifill" style="width:${pct}%;background:${pc(pct)}"></div></div>
+        <div class="kihint">${hasSampel?"📋 Ada sampel":"🔍 Klik lihat"}</div>
+      </div>`;
+    }).join("");
+    return `<div class="card" style="border-left-color:${cfg.d}">
+      <div class="cmain">
+        <div class="ctop">
+          <div class="cinfo">
+            <div class="cname">${item.nama}</div>
+            <div class="cmeta">
+              <span class="badge" style="background:${cfg.bg};color:${cfg.c}">● ${item.status}</span>
+              <span class="dl${urg?' red':''}">📅 ${item.deadline} · ${dlStr}</span>
+            </div>
+          </div>
+          <div class="cpct" style="color:${pc(item.progress)}">${item.progress}%</div>
+        </div>
+        <div class="pb"><div class="pf" style="width:${item.progress}%;background:${pc(item.progress)}"></div></div>
+        <div class="team"><span class="tlbl">Tim:</span>${teams}</div>
+        <div class="cactions">
+          <button class="cact" onclick="switchTab('wilayah');setTimeout(()=>selectKab(null,true),60)">📍 Lihat per Wilayah</button>
+          <button class="cact" onclick="goToSurvei('${item.id}')">📋 Detail Kegiatan</button>
+        </div>
+      </div>
+      <div class="kabacc">
+        <button class="kabtog" onclick="togKab(this)">📍 Progress per Kabupaten/Kota <span>▾</span></button>
+        <div class="kabwrap"><div class="kabgrid">${kabItems}</div></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function togKab(btn){const w=btn.nextElementSibling;w.classList.toggle("open");btn.querySelector("span").textContent=w.classList.contains("open")?"▴":"▾";}
+document.getElementById("ftrs").onclick=e=>{if(!e.target.dataset.f)return;flt=e.target.dataset.f;document.querySelectorAll(".fb").forEach(b=>b.classList.toggle("on",b.dataset.f===flt));renderCards();};
+
+/* ══════════════════════════════════════════════════
+   PANEL 2 — PER WILAYAH
+══════════════════════════════════════════════════ */
+function renderWilayah(){
+  // Render kab selector buttons
+  const sel=document.getElementById("kab-selector");
+  sel.innerHTML=KABKOTA.map(k=>{
+    const avgPct=surveiData.length?Math.round(surveiData.reduce((a,d)=>a+(d.kab[k]??0),0)/surveiData.length):0;
+    return `<button class="kab-btn${selKab===k?" on":""}" onclick="selectKab('${k}')">
+      <div class="kb-ico">${KAB_ICO[k]||"🏢"}</div>
+      <div class="kb-name">${k}</div>
+      <div class="kb-pct" style="color:${pc(avgPct)}">${avgPct}%</div>
+    </button>`;
+  }).join("");
+  if(selKab)renderWilayahContent();
+}
+
+function selectKab(k){
+  selKab=k;wilSurveiFilter="Semua";wilStatusFilter="Semua";
+  renderWilayah();
+}
+
+function renderWilayahContent(){
+  const k=selKab;
+  const sampelKab=sampelData.filter(s=>s.kab===k);
+  const tot=sampelKab.length,sdh=sampelKab.filter(s=>s.status==="Sudah").length;
+  const avgPct=surveiData.length?Math.round(surveiData.reduce((a,d)=>a+(d.kab[k]??0),0)/surveiData.length):0;
+  const aktif=surveiData.filter(d=>d.status!=="Selesai"&&d.status!=="Belum Mulai").length;
+
+  const demoTag=isDemoSampel?`<span class="demo-badge">DEMO</span>`:"";
+
+  let html=`<div class="wil-header">
+    <div class="wil-top">
+      <div>
+        <div class="wil-title">${KAB_ICO[k]||"🏢"} ${k} ${demoTag}</div>
+        <div class="wil-sub">Data lintas ${surveiData.length} kegiatan survei/sensus</div>
+      </div>
+      <button class="expbtn" onclick="exportWilayahCSV()">⬇️ Export CSV</button>
+    </div>
+    <div class="wil-stats">
+      <div class="wstat"><div class="wsv" style="color:var(--accent-dark)">${tot}</div><div class="wsl">Total Sampel</div></div>
+      <div class="wstat"><div class="wsv" style="color:var(--g)">${sdh}</div><div class="wsl">Sudah Masuk</div></div>
+      <div class="wstat"><div class="wsv" style="color:var(--red)">${tot-sdh}</div><div class="wsl">Belum Masuk</div></div>
+      <div class="wstat"><div class="wsv" style="color:${pc(avgPct)}">${avgPct}%</div><div class="wsl">Rata-rata Progress</div></div>
+    </div>
+  </div>`;
+
+  // Survei progress list for this kab
+  html+=`<div class="section-title">Progress per Kegiatan di ${k}</div>`;
+  html+=`<div class="wil-survei-list">`;
+  surveiData.forEach(item=>{
+    const pct=item.kab[k]??0;
+    const cfg=SCFG[item.status]||SCFG["Belum Mulai"];
+    const sp=sampelData.filter(s=>s.survei===item.nama&&s.kab===k);
+    const days=daysUntil(item.deadline);
+    const dlStr=item.status==="Selesai"?"✅ Selesai":days>=0?`${days} hari lagi`:"⚠️ Terlambat";
+    html+=`<div class="wil-survei-card" onclick="openKP('${item.id}','${esc(item.nama)}','${k}')">
+      <div class="wsc-top">
+        <div class="wsc-name">${item.nama}</div>
+        <div class="wsc-pct" style="color:${pc(pct)}">${pct}%</div>
+      </div>
+      <div class="wsc-meta">
+        <span class="badge" style="background:${cfg.bg};color:${cfg.c}">● ${item.status}</span>
+        <span style="font-size:11px;color:var(--muted)">📅 ${dlStr}</span>
+      </div>
+      <div class="wsc-bar"><div class="wsc-fill" style="width:${pct}%;background:${pc(pct)}"></div></div>
+      <div class="wsc-sampel">📋 ${sp.length} sampel · ${sp.filter(s=>s.status==="Sudah").length} sudah masuk</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Full sampel list for this kab
+  const surveiNames=["Semua",...new Set(sampelKab.map(s=>s.survei))];
+  const chips=surveiNames.map(n=>`<span class="survei-chip${wilSurveiFilter===n?" on":""}" onclick="wilSetSurvei('${esc(n)}')">${n}</span>`).join("");
+
+  const filtered=sampelKab.filter(s=>(wilSurveiFilter==="Semua"||s.survei===wilSurveiFilter)&&(wilStatusFilter==="Semua"||s.status===wilStatusFilter));
+
+  html+=`<div class="sampel-section">
+    <div class="sampel-head">
+      <div class="sampel-head-title">📋 Daftar Sampel${isDemoSampel?" (Demo)":""}</div>
+      <div class="sampel-filters">
+        <input class="smp-srch" id="wil-srch" placeholder="Cari nama sampel..." oninput="wilSearch(this.value)" value="">
+        <button class="sfb${wilStatusFilter==="Semua"?" on":""}" onclick="wilSetStatus('Semua')">Semua</button>
+        <button class="sfb${wilStatusFilter==="Sudah"?" on":""}" onclick="wilSetStatus('Sudah')">✅ Sudah</button>
+        <button class="sfb${wilStatusFilter==="Belum"?" on":""}" onclick="wilSetStatus('Belum')">⏳ Belum</button>
+      </div>
+    </div>
+    <div class="survei-chips"><span class="survei-chip-wrap">Filter survei:</span>${chips}</div>
+    <div class="sampel-body">${renderSampelRows(filtered,true)}</div>
+  </div>`;
+
+  document.getElementById("wil-content").innerHTML=html;
+}
+
+let wilSrch="";
+function wilSearch(v){wilSrch=v;renderWilayahSampelRows();}
+function wilSetSurvei(n){wilSurveiFilter=n;renderWilayahContent();}
+function wilSetStatus(s){wilStatusFilter=s;renderWilayahContent();}
+function renderWilayahSampelRows(){
+  const k=selKab;
+  const sampelKab=sampelData.filter(s=>s.kab===k);
+  const filtered=sampelKab.filter(s=>(wilSurveiFilter==="Semua"||s.survei===wilSurveiFilter)&&(wilStatusFilter==="Semua"||s.status===wilStatusFilter)&&(s.nama+s.idSampel+s.alamat+s.survei).toLowerCase().includes(wilSrch.toLowerCase()));
+  document.querySelector("#wil-content .sampel-body").innerHTML=renderSampelRows(filtered,true);
+}
+
+function renderSampelRows(list,showSurvei=false){
+  if(!list.length)return`<div class="kempty"><div class="ei">🔍</div>Tidak ada data.</div>`;
+  return list.map(s=>`<div class="sitem ${s.status==="Sudah"?"sudah":"belum"}">
+    <div class="sdot ${s.status==="Sudah"?"sudah":"belum"}">${s.status==="Sudah"?"✓":"○"}</div>
+    <div class="sbody">
+      <div class="srow">
+        <div><span class="sname">${s.nama||"(tanpa nama)"}</span>${s.idSampel?`<span class="sid">${s.idSampel}</span>`:""}</div>
+        <span class="sbdg ${s.status==="Sudah"?"sudah":"belum"}">${s.status==="Sudah"?"✅ Sudah":"⏳ Belum"}</span>
+      </div>
+      ${s.alamat?`<div class="smeta">📍 ${s.alamat}</div>`:""}
+      ${showSurvei&&s.survei?`<div class="s-survei-tag">📋 ${s.survei}</div>`:""}
+      ${s.catatan?`<div class="snote">💬 ${s.catatan}</div>`:""}
+    </div>
+  </div>`).join("");
+}
+
+function exportWilayahCSV(){
+  const k=selKab;if(!k)return;
+  const rows=sampelData.filter(s=>s.kab===k);
+  const csv=["Survei,ID Sampel,Nama,Alamat,Status,Catatan",...rows.map(s=>[s.survei,s.idSampel,s.nama,s.alamat,s.status,s.catatan].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","))].join("\n");
+  dl(csv,`sampel_${k.replace(/\./g,"").replace(/\s+/g,"_")}.csv`,"text/csv");
+}
+
+/* ══════════════════════════════════════════════════
+   PANEL 3 — PER KEGIATAN
+══════════════════════════════════════════════════ */
+function renderKegiatanSelector(){
+  const grid=document.getElementById("sel-grid");
+  grid.innerHTML=surveiData.map(item=>{
+    const cfg=SCFG[item.status]||SCFG["Belum Mulai"];
+    return `<div class="sel-card${selSurveiId===item.id?" on":""}" onclick="selectSurvei('${item.id}')">
+      <div class="sel-card-dot" style="background:${cfg.d}"></div>
+      <div class="sel-card-body">
+        <div class="sel-card-name">${item.nama}</div>
+        <div class="sel-card-meta"><span class="badge" style="background:${cfg.bg};color:${cfg.c}">● ${item.status}</span> &nbsp;${item.progress}%</div>
+      </div>
+    </div>`;
+  }).join("");
+  if(!surveiData.length)grid.innerHTML=`<div class="nodata" style="grid-column:1/-1"><div class="ico">⏳</div>Memuat...</div>`;
+}
+
+function selectSurvei(id){
+  selSurveiId=id;kgKabFilter="Semua";kgStatusFilter="Semua";kgSrch="";
+  renderKegiatanSelector();
+  renderKegiatanDetail();
+}
+
+function renderKegiatanDetail(){
+  const item=surveiData.find(d=>d.id===selSurveiId);
+  if(!item){document.getElementById("kg-content").innerHTML="";return;}
+  const cfg=SCFG[item.status]||SCFG["Belum Mulai"];
+  const days=daysUntil(item.deadline);
+  const dlStr=item.status==="Selesai"?"✅ Selesai":days>=0?`${days} hari lagi`:"⚠️ Terlambat ${Math.abs(days)}h";
+  const sp=sampelData.filter(s=>s.survei===item.nama);
+  const tot=sp.length,sdh=sp.filter(s=>s.status==="Sudah").length;
+  const realPct=tot>0?Math.round(sdh/tot*100):item.progress;
+
+  const teams=item.penanggung.length?item.penanggung.map(p=>`<strong>${p}</strong>`).join(", "):"—";
+  const demoTag=isDemoSampel?`<span class="demo-badge">DEMO</span>`:"";
+
+  // Kab breakdown rows
+  const kabRows=KABKOTA.map(k=>{
+    const pct=item.kab[k]??0;
+    const ksp=sp.filter(s=>s.kab===k);
+    const ksdh=ksp.filter(s=>s.status==="Sudah").length;
+    return `<div class="chart-row" onclick="openKP('${item.id}','${esc(item.nama)}','${k}')">
+      <div class="chart-name">${KAB_ICO[k]||""} ${k}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width:${pct}%;background:${pc(pct)}"></div></div>
+      <div class="chart-pct" style="color:${pc(pct)}">${pct}%</div>
+      <div class="chart-count">${ksdh}/${ksp.length} sampel</div>
+    </div>`;
+  }).join("");
+
+  // Sampel filters
+  const kabChips=["Semua",...KABKOTA].map(k=>`<span class="survei-chip${kgKabFilter===k?" on":""}" onclick="kgSetKab('${k}')">${k==="Semua"?"Semua":KAB_ICO[k]+" "+k.replace("Kab. ","")}</span>`).join("");
+
+  const filtered=sp.filter(s=>(kgKabFilter==="Semua"||s.kab===kgKabFilter)&&(kgStatusFilter==="Semua"||s.status===kgStatusFilter)&&(s.nama+s.idSampel+s.alamat+s.kab).toLowerCase().includes(kgSrch.toLowerCase()));
+
+  let html=`<div class="kg-header">
+    <div class="kg-top">
+      <div class="kg-title-area">
+        <div class="kg-title">${item.nama} ${demoTag}</div>
+        <div class="kg-meta">
+          <span class="badge" style="background:${cfg.bg};color:${cfg.c}">● ${item.status}</span>
+          <span style="font-size:12px;color:var(--muted)">📅 ${item.deadline}</span>
+          <span style="font-size:12px;color:${days<0?'var(--red)':days<7?'var(--amb)':'var(--muted)'}">${dlStr}</span>
+        </div>
+      </div>
+      <div class="kg-right">
+        <div class="kg-pct-big" style="color:${pc(realPct)}">${realPct}%</div>
+        <div class="kg-pct-label">Progress</div>
+      </div>
+    </div>
+    <div class="kg-pbar"><div class="kg-pfill" style="width:${realPct}%;background:${pc(realPct)}"></div></div>
+    <div class="kg-stats">
+      <div class="kgst"><div class="kgstv" style="color:var(--accent-dark)">${tot}</div><div class="kgstl">Total Sampel</div></div>
+      <div class="kgst"><div class="kgstv" style="color:var(--g)">${sdh}</div><div class="kgstl">Sudah Masuk</div></div>
+      <div class="kgst"><div class="kgstv" style="color:var(--red)">${tot-sdh}</div><div class="kgstl">Belum Masuk</div></div>
+      <div class="kgst"><div class="kgstv" style="color:var(--amb)">${days>=0&&item.status!=="Selesai"?days+"h":"—"}</div><div class="kgstl">Sisa Waktu</div></div>
+    </div>
+    <div class="kg-info-row">
+      <div class="kg-info-chip">👥 Tim: <strong>${teams}</strong></div>
+      ${item.penanggung.map(p=>`<div class="kg-info-chip">🧑 ${p}</div>`).join("")}
+    </div>
+  </div>
+
+  <div class="kab-chart">
+    <div class="chart-title">📊 Progress per Kabupaten/Kota — klik baris untuk lihat sampel</div>
+    ${kabRows}
+  </div>
+
+  <div class="sampel-section">
+    <div class="sampel-head">
+      <div class="sampel-head-title">📋 Daftar Sampel${isDemoSampel?" (Demo)":""}</div>
+      <div class="sampel-filters">
+        <input class="smp-srch" placeholder="Cari nama..." oninput="kgSearch(this.value)" value="${kgSrch}">
+        <button class="sfb${kgStatusFilter==="Semua"?" on":""}" onclick="kgSetStatus('Semua')">Semua</button>
+        <button class="sfb${kgStatusFilter==="Sudah"?" on":""}" onclick="kgSetStatus('Sudah')">✅ Sudah</button>
+        <button class="sfb${kgStatusFilter==="Belum"?" on":""}" onclick="kgSetStatus('Belum')">⏳ Belum</button>
+        <button class="expbtn" onclick="exportKegiatanCSV()">⬇️ CSV</button>
+      </div>
+    </div>
+    <div class="survei-chips"><span class="survei-chip-wrap">Filter wilayah:</span>${kabChips}</div>
+    <div class="sampel-body">${renderSampelRows(filtered)}</div>
+  </div>`;
+
+  document.getElementById("kg-content").innerHTML=html;
+}
+
+function kgSetKab(k){kgKabFilter=k;renderKegiatanDetail();}
+function kgSetStatus(s){kgStatusFilter=s;renderKegiatanDetail();}
+function kgSearch(v){kgSrch=v;renderKegiatanDetailSampelOnly();}
+function renderKegiatanDetailSampelOnly(){
+  const item=surveiData.find(d=>d.id===selSurveiId);if(!item)return;
+  const sp=sampelData.filter(s=>s.survei===item.nama);
+  const filtered=sp.filter(s=>(kgKabFilter==="Semua"||s.kab===kgKabFilter)&&(kgStatusFilter==="Semua"||s.status===kgStatusFilter)&&(s.nama+s.idSampel+s.alamat+s.kab).toLowerCase().includes(kgSrch.toLowerCase()));
+  const body=document.querySelector("#kg-content .sampel-body");
+  if(body)body.innerHTML=renderSampelRows(filtered);
+}
+
+function exportKegiatanCSV(){
+  const item=surveiData.find(d=>d.id===selSurveiId);if(!item)return;
+  const rows=sampelData.filter(s=>s.survei===item.nama);
+  const csv=["Kabupaten,ID Sampel,Nama,Alamat,Status,Catatan",...rows.map(s=>[s.kab,s.idSampel,s.nama,s.alamat,s.status,s.catatan].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","))].join("\n");
+  dl(csv,`sampel_${item.nama.replace(/\s+/g,"_").substring(0,40)}.csv`,"text/csv");
+}
+
+function dl(content,filename,type){
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+
+/* ══════════════════════════════════════════════════
+   SAMPEL SIDE PANEL
+══════════════════════════════════════════════════ */
+function openKP(sid,sname,kab){
+  kpSurvei=sid;kpKab=kab;sflt="Semua";
+  document.getElementById("kpS").textContent=sname;
+  document.getElementById("kpK").textContent=kab;
+  document.getElementById("ksrch").value="";
+  document.querySelectorAll(".kfb").forEach(b=>b.classList.toggle("on",b.dataset.sf==="Semua"));
+  refreshKP();
+  document.getElementById("kPan").classList.add("on");
+  document.getElementById("kOv").classList.add("on");
+}
+function closeKP(){document.getElementById("kPan").classList.remove("on");document.getElementById("kOv").classList.remove("on");}
+function setSF(f){sflt=f;document.querySelectorAll(".kfb").forEach(b=>b.classList.toggle("on",b.dataset.sf===f));renderSampelPanel();}
+
+function refreshKP(){
+  const survei=surveiData.find(d=>d.id===kpSurvei);
+  if(survei){const p=survei.kab[kpKab]??0;setKPBar(p);}
+  const sname=document.getElementById("kpS").textContent;
+  kpItems=sampelData.filter(s=>s.survei===sname&&s.kab===kpKab);
+  const tot=kpItems.length,sdh=kpItems.filter(s=>s.status==="Sudah").length;
+  document.getElementById("kpTot").textContent=tot;
+  document.getElementById("kpSdh").textContent=sdh;
+  document.getElementById("kpBlm").textContent=tot-sdh;
+  if(tot>0)setKPBar(Math.round(sdh/tot*100));
+  renderSampelPanel();
+}
+function setKPBar(p){
+  document.getElementById("kpF").style.cssText=`width:${p}%;background:${pc(p)}`;
+  document.getElementById("kpP").style.color=pc(p);
+  document.getElementById("kpP").textContent=p+"%";
+}
+function renderSampelPanel(){
+  const q=document.getElementById("ksrch").value.toLowerCase();
+  const filtered=kpItems.filter(s=>(sflt==="Semua"||s.status===sflt)&&(s.nama+s.idSampel+s.alamat).toLowerCase().includes(q));
+  const el=document.getElementById("kbody");
+  if(!kpItems.length){
+    el.innerHTML=`<div class="kempty"><div class="ei">📋</div>Belum ada data sampel.${isDemoSampel?`<br><small style="color:var(--light);margin-top:6px;display:block">⚠️ Mode demo</small>`:""}</div>`;return;
+  }
+  if(!filtered.length){el.innerHTML='<div class="kempty"><div class="ei">🔍</div>Tidak ada yang cocok.</div>';return;}
+  el.innerHTML=renderSampelRows(filtered);
+}
+
+/* ══════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════ */
+function openSP(){document.getElementById("span").classList.add("on");document.getElementById("sov").classList.add("on");}
+function closeSP(){document.getElementById("span").classList.remove("on");document.getElementById("sov").classList.remove("on");}
+function setTheme(t,btn){document.documentElement.setAttribute("data-theme",t);document.querySelectorAll(".tbtn").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
+function setFZ(v){document.documentElement.style.setProperty("--fs",v+"px");document.getElementById("fzv").textContent=v+"px";}
+</script>
+</body>
+</html>
